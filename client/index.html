@@ -7,25 +7,30 @@
     * {
       margin-top: 10px;
     }
+
+    #process-bar {
+      background: #ddff47;
+    }
   </style>
 </head>
 <body>
 <div id="upload-box" style="margin:auto;width:500px;">
   <h2>Video Uploader</h2>
-  <div id="upload-area">
+  <span id="upload-area">
     <label for="file-input">Choose A File: </label><input type="file" id="file-input"><br>
     <label for="name-input">Name: </label><input type="text" id="name-input"><br>
 
     <button type='button' id='upload-button'>upload</button>
-  </div>
+  </span>
 </div>
 <script src="/socket.io/socket.io.js"></script>
 <script>
   window.addEventListener('load', readyFunc)
-  var $ = document.getElementById
 
   function readyFunc() {
+    var $ = document.getElementById
     var socket = io.connect('http://localhost:3000')
+    var fileReader, name, selectedFile = null
 
     if (!window.File || !window.FileReader) {
       $('upload-area').innerHTML = 'Not Supported'
@@ -35,14 +40,47 @@
     $('upload-button').addEventListener('click', startUpload)
     $('file-input').addEventListener('change', fileChosen)
 
-    var selectedFile = null;
-
     function fileChosen(event) {
       selectedFile = event.target.files[0]
       $('name-input').value = selectedFile.name
     }
-  }
 
+    function startUpload() {
+      if ($('file-input').value != '') {
+        fileReader = new FileReader()
+        name = $('name-input').value
+        var content = '<div id="name-area">uploading ' + selectedFile.name + ' as ' + name + '</div>'
+        content += '<div id="progress-container"><div id="progress-bar"></div></div><span id="percent">0%</span>'
+        content += '<span id="uploaded"> - <span id="MB">0</span>/' + Math.round(selectedFile.size / 1048576) + 'MB</span>'
+        $('upload-area').innerHTML = content
+        fileReader.onload = function (event) {
+          socket.emit('upload', {name: name, data: event.target.result})
+        }
+        socket.emit('start', {name: name, size: selectedFile.size})
+      } else {
+        alert('select a file!')
+      }
+    }
+
+    function updateBar(percent) {
+      $('process-bar').style.width = percent + '%'
+      $('percent').innerHTML = Math.round((percent * 100) / 100) + '%'
+      $('MB').innerHTML = Math.round(((percent / 100.0) * selectedFile.size) / 1024 / 1024)
+    }
+
+    socket.on('more', function (data) {
+      updateBar(data.percent)
+
+      var place = data.place * 512 * 1024
+      var slice = selectedFile.slice || selectedFile.webkitSlice || selectedFile.mozSlice
+      var newFile = slice(place, place + Math.min(512 * 1024, (selectedFile.size - place)))
+      fileReader.readAsBinaryString(newFile)
+    })
+
+    socket.on('done', function () {
+      alert('done uploading')
+    })
+  }
 </script>
 </body>
 </html>
