@@ -28,7 +28,7 @@
   window.addEventListener('load', readyFunc)
 
   function readyFunc() {
-    var $ = document.getElementById
+    var $ = document.getElementById.bind(document)
     var socket = io.connect('http://localhost:3000')
     var fileReader, name, selectedFile = null
 
@@ -36,9 +36,6 @@
       $('upload-area').innerHTML = 'Not Supported'
       return
     }
-
-    $('upload-button').addEventListener('click', startUpload)
-    $('file-input').addEventListener('change', fileChosen)
 
     function fileChosen(event) {
       selectedFile = event.target.files[0]
@@ -49,36 +46,44 @@
       if ($('file-input').value != '') {
         fileReader = new FileReader()
         name = $('name-input').value
+
         var content = '<div id="name-area">uploading ' + selectedFile.name + ' as ' + name + '</div>'
         content += '<div id="progress-container"><div id="progress-bar"></div></div><span id="percent">0%</span>'
-        content += '<span id="uploaded"> - <span id="MB">0</span>/' + Math.round(selectedFile.size / 1048576) + 'MB</span>'
+        content += '<span id="uploaded"> - <span id="MB">0</span>/' + (selectedFile.size / 1048576).toFixed(1) + 'MB</span>'
         $('upload-area').innerHTML = content
+
         fileReader.onload = function (event) {
           socket.emit('upload', {name: name, data: event.target.result})
         }
+
         socket.emit('start', {name: name, size: selectedFile.size})
       } else {
-        alert('select a file!')
+        alert('Please select a file!')
       }
     }
 
     function updateBar(percent) {
-      $('process-bar').style.width = percent + '%'
+      $('progress-bar').style.width = percent + '%'
       $('percent').innerHTML = Math.round((percent * 100) / 100) + '%'
-      $('MB').innerHTML = Math.round(((percent / 100.0) * selectedFile.size) / 1024 / 1024)
+      $('MB').innerHTML = (((percent / 100.0) * selectedFile.size) / 1024 / 1024).toFixed(1)
     }
+
+    $('upload-button').addEventListener('click', startUpload)
+    $('file-input').addEventListener('change', fileChosen)
 
     socket.on('more', function (data) {
       updateBar(data.percent)
 
       var place = data.place * 512 * 1024
-      var slice = selectedFile.slice || selectedFile.webkitSlice || selectedFile.mozSlice
-      var newFile = slice(place, place + Math.min(512 * 1024, (selectedFile.size - place)))
+      var newFile = selectedFile.slice(place, place + Math.min(512 * 1024, (selectedFile.size - place)))
       fileReader.readAsBinaryString(newFile)
     })
 
     socket.on('done', function () {
-      alert('done uploading')
+      updateBar(100)
+//      setTimeout(function () {
+//        window.location.reload()
+//      }, 3000)
     })
   }
 </script>
