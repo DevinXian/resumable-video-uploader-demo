@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Resumable Video Uploader Demo</title>
+  <style>
+    * {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+<div id="upload-box" style="margin:auto;width:500px;">
+  <h2>Video Uploader</h2>
+  <div id="upload-area">
+    <label for="file-input">Choose A File: </label><input type="file" id="file-input"><br>
+    <label for="name-input">Name: </label><input type="text" id="name-input"><br>
+
+    <button type='button' id='upload-button'>upload</button>
+  </div>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  window.addEventListener('load', readyFunc)
+  var $ = document.getElementById
+
+  function readyFunc() {
+    var socket = io.connect('http://localhost:3000')
+
+    if (!window.File || !window.FileReader) {
+      $('upload-area').innerHTML = 'Not Supported'
+      return
+    }
+
+    $('upload-button').addEventListener('click', startUpload)
+    $('file-input').addEventListener('change', fileChosen)
+
+    var selectedFile = null;
+
+    function fileChosen(event) {
+      selectedFile = event.target.files[0]
+      $('name-input').value = selectedFile.name
+    }
+  }
+
+</script>
+</body>
+</html>
